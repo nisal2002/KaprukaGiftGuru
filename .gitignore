@@ -1,0 +1,9 @@
+# Python local environments and caches
+__pycache__/
+*.pyc
+venv/
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
