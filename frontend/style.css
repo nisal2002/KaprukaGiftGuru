@@ -1,0 +1,10 @@
+/* Force the custom typography family across all native HTML tags */
+* {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+/* Optional fine-tuning for smoother font rendering on modern displays */
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
