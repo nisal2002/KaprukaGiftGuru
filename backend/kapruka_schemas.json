@@ -1,0 +1,264 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "kapruka_search_products",
+      "description": "Search for products across the Kapruka catalog using keywords. Returns a ranked list of matching products with prices, stock status, images, and URLs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "q": {
+                "type": "string",
+                "description": "Search query (e.g. 'birthday cake', 'roses'). Min 3 characters."
+              },
+              "category": {
+                "type": ["string", "null"],
+                "description": "Optional filter by category name (e.g. 'Birthday', 'Cakes')."
+              },
+              "limit": {
+                "type": "integer",
+                "description": "Number of results to return (1-50). Defaults to 10.",
+                "default": 10
+              },
+              "cursor": {
+                "type": ["string", "null"],
+                "description": "Pagination cursor from a previous search response's 'next_cursor' field."
+              },
+              "currency": {
+                "type": "string",
+                "description": "Price currency. Supported: LKR, USD, GBP, AUD, CAD, EUR.",
+                "default": "LKR"
+              },
+              "min_price": {
+                "type": ["number", "null"],
+                "description": "Minimum price (inclusive), in the requested currency."
+              },
+              "max_price": {
+                "type": ["number", "null"],
+                "description": "Maximum price (inclusive), in the requested currency."
+              },
+              "in_stock_only": {
+                "type": "boolean",
+                "description": "If true, only return products currently in stock.",
+                "default": false
+              },
+              "sort": {
+                "type": "string",
+                "description": "Sort order: 'relevance' (default), 'price_asc', 'price_desc', 'newest', 'bestseller'.",
+                "default": "relevance"
+              }
+            },
+            "required": ["q"]
+          }
+        },
+        "required": ["params"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "kapruka_get_product",
+      "description": "Fetch full details for a single Kapruka product by its product ID. Returns name, description, price, stock status, images, and shipping info.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "product_id": {
+                "type": "string",
+                "description": "Kapruka product ID (e.g. 'cake00ka002034')."
+              },
+              "currency": {
+                "type": "string",
+                "description": "Price currency. Supported: LKR, USD, GBP, AUD, CAD, EUR.",
+                "default": "LKR"
+              }
+            },
+            "required": ["product_id"]
+          }
+        },
+        "required": ["params"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "kapruka_list_categories",
+      "description": "List top-level Kapruka product categories by name with browse URLs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "depth": {
+                "type": "integer",
+                "description": "How many levels of sub-categories to include (1 or 2). Default 1.",
+                "default": 1
+              }
+            }
+          }
+        },
+        "required": ["params"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "kapruka_list_delivery_cities",
+      "description": "Search Sri Lankan cities Kapruka delivers to. Use the `query` param to filter (e.g. 'colombo').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": ["string", "null"],
+                "description": "Filter cities by partial match against name or aliases."
+              },
+              "limit": {
+                "type": "integer",
+                "description": "Max cities to return (1-50). Default 25.",
+                "default": 25
+              }
+            }
+          }
+        },
+        "required": ["params"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "kapruka_check_delivery",
+      "description": "Check whether Kapruka can deliver to a given city on a given date, and at what rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "city": {
+                "type": "string",
+                "description": "Canonical city name (use kapruka_list_delivery_cities to find one)."
+              },
+              "delivery_date": {
+                "type": ["string", "null"],
+                "description": "Target delivery date in ISO format (YYYY-MM-DD), Sri Lanka time. Omit to check today."
+              },
+              "product_id": {
+                "type": ["string", "null"],
+                "description": "Optional product ID. Enables perishable warning for cakes/flowers."
+              }
+            },
+            "required": ["city"]
+          }
+        },
+        "required": ["params"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "kapruka_create_order",
+      "description": "Create a guest-checkout order on Kapruka and return a secure 60-minute click-to-pay link.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "cart": {
+                "type": "array",
+                "description": "1 to 30 items to purchase.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "product_id": { "type": "string", "description": "Kapruka product ID." },
+                    "quantity": { "type": "integer", "description": "Quantity (1-99).", "default": 1 },
+                    "icing_text": { "type": ["string", "null"], "description": "Cake icing text. Ignored for non-cakes." }
+                  },
+                  "required": ["product_id"]
+                }
+              },
+              "recipient": {
+                "type": "object",
+                "description": "Details of the person receiving the order.",
+                "properties": {
+                  "name": { "type": "string", "description": "Recipient name." },
+                  "phone": { "type": "string", "description": "Recipient phone (E.164 +9477... or local 077...)." }
+                },
+                "required": ["name", "phone"]
+              },
+              "delivery": {
+                "type": "object",
+                "description": "Logistics details for the order.",
+                "properties": {
+                  "address": { "type": "string", "description": "Street address." },
+                  "city": { "type": "string", "description": "Valid Kapruka delivery city." },
+                  "location_type": { "type": "string", "description": "house, apartment, office, other.", "default": "house" },
+                  "date": { "type": "string", "description": "Delivery date in YYYY-MM-DD (Asia/Colombo)." },
+                  "instructions": { "type": ["string", "null"], "description": "Free-form delivery instructions." }
+                },
+                "required": ["address", "city", "date"]
+              },
+              "sender": {
+                "type": "object",
+                "description": "Details of the person placing the order.",
+                "properties": {
+                  "name": { "type": "string", "description": "Sender name on the gift card." },
+                  "anonymous": { "type": "boolean", "description": "If true, gift card shows 'Anonymous'.", "default": false }
+                },
+                "required": ["name"]
+              },
+              "gift_message": {
+                "type": ["string", "null"],
+                "description": "Optional gift card message."
+              },
+              "currency": {
+                "type": "string",
+                "description": "Pricing currency (e.g. 'LKR').",
+                "default": "LKR"
+              }
+            },
+            "required": ["cart", "recipient", "delivery", "sender"]
+          }
+        },
+        "required": ["params"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "kapruka_track_order",
+      "description": "Look up status and delivery progress for a Kapruka order by order number (e.g. 'VIMP34456CB2').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "order_number": {
+                "type": "string",
+                "description": "Order number from the customer's Kapruka order confirmation email."
+              }
+            },
+            "required": ["order_number"]
+          }
+        },
+        "required": ["params"]
+      }
+    }
+  }
+]
