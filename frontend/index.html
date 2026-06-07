@@ -5,33 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kapruka Gift Guru</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div id="chat-container">
-        <header id="chat-header">
-            <div class="header-info">
-                <h1>Kapruka Gift Guru 🎁</h1>
-                <p>Your personalized Sri Lankan shopping assistant</p>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="https://www.kapruka.com/images/logo/logo_kapruka.png" alt="Kapruka Logo" class="brand-logo" onerror="this.style.display='none'">
+                <h2>Gift Guru</h2>
             </div>
-        </header>
-        
-        <div id="chat-box">
-            <div class="message assistant">
-                Hello! I am your Kapruka Gift Guru. Ask me to find products, check delivery availability or build an order for you!
+            <button class="new-chat-btn" id="new-chat-btn">
+                <i class="fa-solid fa-plus"></i> New Shopping Session
+            </button>
+            <div class="sidebar-footer">
+                <div class="status-badge">
+                    <span class="status-dot"></span> Online Orchestrator
+                </div>
             </div>
-        </div>
-        
-        <div id="loading-indicator" class="hidden">
-            <span>Guru is analyzing Kapruka...</span>
-            <div class="spinner"></div>
-        </div>
+        </aside>
 
-        <div id="input-area">
-            <input type="text" id="user-input" placeholder="Type your gift request here (e.g., Chocolate cake under 7000 LKR)..." autocomplete="off">
-            <button id="send-btn">Send</button>
-        </div>
+        <main class="chat-interface">
+            <header class="chat-header">
+                <div class="header-info">
+                    <h1>Kapruka AI Gift Assistant</h1>
+                    <p>Powered by FastAPI & Autonomous Tool Chaining</p>
+                </div>
+                <div class="header-actions">
+                    <i class="fa-solid fa-shield-halved secure-icon" title="Secure Payment Processing"></i>
+                    <span>Secure Checkout Link System</span>
+                </div>
+            </header>
+
+            <section class="messages-container" id="chat-window">
+                <div class="welcome-card" id="welcome-card">
+                    <div class="welcome-icon">🔮</div>
+                    <h3>Welcome to the Future of Gifting!</h3>
+                    <p>I am your warm, witty, and intelligent shopping companion. Tell me who you are shopping for, your budget, or your delivery target in Sri Lanka, and let's discover the perfect match.</p>
+                    <div class="suggested-prompts">
+                        <button class="prompt-chip">🎂 Show me chocolate cakes under 6000 LKR</button>
+                        <button class="prompt-chip">🚚 Do you deliver to Colombo 03 tomorrow?</button>
+                        <button class="prompt-chip">📦 Track my order VIMP34456CB2</button>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="input-area">
+                <form class="input-form" id="chat-form">
+                    <input type="text" id="user-input" placeholder="Type your gifting request or ask to check delivery..." autocomplete="off" required>
+                    <button type="submit" class="send-btn" id="send-button">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+                <div class="input-disclaimer">
+                    Kapruka Gift Guru updates live inventories, rates, and tracking numbers dynamically.
+                </div>
+            </footer>
+        </main>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
