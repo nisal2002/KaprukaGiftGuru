@@ -2,63 +2,81 @@ import os
 import logging
 import webbrowser
 from threading import Timer
-from flask import Flask, request, jsonify, send_from_directory
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+
 from services.llm_service import chat_with_guru
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Point Flask to the 'frontend' folder one level up from the backend directory
+# Point to the 'frontend' folder one level up from the backend directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend"))
 
-app = Flask(__name__, static_folder=FRONTEND_DIR)
+app = FastAPI()
 
-@app.route("/")
-def serve_index():
-    """Serves the main frontend page."""
-    return send_from_directory(app.static_folder, "index.html")
+# FastAPI handles CORS natively through middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.route("/<path:path>")
-def serve_static_files(path):
-    """Serves CSS, JS, images, etc. from the frontend directory."""
-    return send_from_directory(app.static_folder, path)
+# Pydantic model strictly enforces incoming JSON structure
+class ChatRequest(BaseModel):
+    message: str
+    history: Optional[List[Dict[str, Any]]] = None
 
-@app.route("/api/chat", methods=["POST", "OPTIONS"])
-def chat_endpoint():
-    if request.method == "OPTIONS":
-        return jsonify({"status": "ok"}), 200
+@app.post("/api/chat")
+def chat_endpoint(request: ChatRequest):
+    """
+    Note: We use 'def' instead of 'async def' here. 
+    FastAPI is smart enough to run standard 'def' functions in a background thread pool,
+    meaning the blocking OpenAI calls in chat_with_guru won't freeze the server!
+    """
+    user_message = request.message.strip()
+    
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message field cannot be empty")
 
     try:
-        data = request.get_json() or {}
-        user_message = data.get("message", "").strip()
-        history = data.get("history", None)
+        reply, updated_history = chat_with_guru(user_message, request.history)
 
-        if not user_message:
-            return jsonify({"error": "Message field cannot be empty"}), 400
-
-        # logger.info(f"Received API request: {user_message}")
-        reply, updated_history = chat_with_guru(user_message, history)
-
-        return jsonify({
+        return {
             "reply": reply,
             "history": updated_history
-        }), 200
+        }
 
     except Exception as e:
         logger.error(f"API route encountered an error: {str(e)}")
-        return jsonify({"error": "An internal server error occurred"}), 500
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
+
+# Specific route for the root to serve index.html
+@app.get("/")
+def serve_index():
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
+# Mount the static files directory for CSS, JS, Images (Must come AFTER the root route)
+app.mount("/", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 def open_browser():
     """Opens the local server URL in the default web browser."""
     webbrowser.open("http://127.0.0.1:5000/")
 
 if __name__ == "__main__":
-    logger.info("Starting Kapruka Gift Guru Server...")
+    logger.info("Starting Kapruka Gift Guru Server with FastAPI...")
     
     # Start the single-use browser launch timer
     Timer(1.0, open_browser).start()
         
-    # We turn off use_reloader to guarantee it only starts exactly once locally
-    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+    # Launch using uvicorn (FastAPI's ASGI server)
+    uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info")
