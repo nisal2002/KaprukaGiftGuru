@@ -336,15 +336,31 @@ body, html {
     gap: 5px;
     padding: 4px 8px;
     align-items: center;
-    height: 20px;
+    min-height: 20px;
+}
+
+.typing-status {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--dark-purple);
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    position: relative;
+    top: 5px;
 }
 
 .typing-dot {
-    width: 7px;
-    height: 7px;
+    width: 5px;
+    height: 5px;
     background: var(--text-muted);
     border-radius: 50%;
-    animation: bounce 1.4s infinite ease-in-out both;
+    animation: bounce 1.5s infinite ease-in-out both;
 }
 
 .typing-dot:nth-child(1) { animation-delay: -0.32s; }

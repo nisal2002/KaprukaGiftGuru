@@ -1,5 +1,6 @@
 // State Tracker holding operational conversational arrays
 let conversationHistory = null;
+let typingIndicatorRow = null;
 
 // DOM Target Selectors
 const chatWindow = document.getElementById("chat-window");
@@ -58,7 +59,7 @@ function appendMessage(sender, content, isRawHtml = false) {
 }
 
 // Render dynamic animated typing dots block
-function appendTypingIndicator() {
+function appendTypingIndicator(statusText = "Analyzing Query") {
     const row = document.createElement("div");
     row.classList.add("message-row", "guru");
     row.id = "typing-indicator-row";
@@ -69,15 +70,54 @@ function appendTypingIndicator() {
     const indicator = document.createElement("div");
     indicator.classList.add("typing-indicator");
     indicator.innerHTML = `
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
+        <span class="typing-status">${statusText}</span>
+        <div class="typing-dots" aria-hidden="true">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>
     `;
 
     bubble.appendChild(indicator);
     row.appendChild(bubble);
     chatWindow.appendChild(row);
     chatWindow.scrollTop = chatWindow.scrollHeight;
+    typingIndicatorRow = row;
+}
+
+function updateTypingIndicator(statusText) {
+    const statusNode = typingIndicatorRow ? typingIndicatorRow.querySelector(".typing-status") : null;
+    if (statusNode && statusText) {
+        statusNode.textContent = statusText;
+    }
+}
+
+function parseSseEventBlock(block) {
+    const lines = block.split(/\r?\n/);
+    let eventType = "message";
+    const dataLines = [];
+
+    lines.forEach((line) => {
+        if (line.startsWith("event:")) {
+            eventType = line.slice(6).trim();
+        } else if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).trim());
+        }
+    });
+
+    if (!dataLines.length) {
+        return null;
+    }
+
+    try {
+        return {
+            eventType,
+            data: JSON.parse(dataLines.join("\n"))
+        };
+    } catch (error) {
+        console.error("Failed to parse streamed event:", error);
+        return null;
+    }
 }
 
 // Remove animated indicator once stream payloads hit
@@ -86,6 +126,7 @@ function removeTypingIndicator() {
     if (indicator) {
         indicator.remove();
     }
+    typingIndicatorRow = null;
 }
 
 // Synchronous Network Gateway connecting to FastAPI endpoints
@@ -93,37 +134,47 @@ async function sendMessageToAgent(messageText) {
     appendMessage("user", messageText);
     appendTypingIndicator();
 
-    try {
-        const response = await fetch("/api/chat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                message: messageText,
-                history: conversationHistory
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Server returned error status: ${response.status}`);
+    // Build EventSource GET URL (encode history as JSON string when present)
+    const params = new URLSearchParams();
+    params.append("message", messageText);
+    if (conversationHistory) {
+        try {
+            params.append("history", JSON.stringify(conversationHistory));
+        } catch (e) {
+            // ignore history if it can't be serialized
         }
+    }
 
-        const data = await response.json();
-        
+    const es = new EventSource(`/api/chat/stream?${params.toString()}`);
+
+    es.addEventListener("status", (e) => {
+        try {
+            const payload = JSON.parse(e.data);
+            updateTypingIndicator(payload.tool || "Analyzing Query...");
+        } catch (err) {
+            console.error("Malformed status event:", err);
+        }
+    });
+
+    es.addEventListener("final", (e) => {
+        try {
+            const payload = JSON.parse(e.data);
+            if (payload.history) conversationHistory = payload.history;
+            appendMessage("guru", payload.reply);
+        } catch (err) {
+            console.error("Malformed final event:", err);
+            appendMessage("guru", "I received an invalid reply from the server.");
+        }
         removeTypingIndicator();
-        
-        // Track history context returned from FastAPI backend
-        conversationHistory = data.history;
-        
-        // Print out filtered structured layout text
-        appendMessage("guru", data.reply);
+        es.close();
+    });
 
-    } catch (error) {
-        console.error("Communication channel failed:", error);
+    es.addEventListener("error", (e) => {
+        console.error("SSE error event:", e);
         removeTypingIndicator();
         appendMessage("guru", "I encountered a minor hitch linking up with the Kapruka server. Let's try that query one more time.");
-    }
+        es.close();
+    });
 }
 
 // Event Listeners Handlers

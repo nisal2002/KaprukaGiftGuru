@@ -1,11 +1,13 @@
 import os
 import json
 import logging
+import asyncio
 from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
+from typing import Optional, List, Dict, Any
 
-from services.mcp_client import execute_kapruka_tool
+from services.mcp_client import execute_kapruka_tool, async_execute_tool
 
 load_dotenv()
 
@@ -91,7 +93,7 @@ General Rules:
 3. Keep your answers visually structured using markdown.
 """
 
-def chat_with_guru(user_message: str, conversation_history: list = None) -> tuple[str, list]:
+def chat_with_guru(user_message: str, conversation_history: Optional[List[Dict[str, Any]]] = None) -> tuple[str, list]:
     """
     The main autonomous execution loop. Takes a user message, talks to OpenAI, 
     executes Kapruka tools in a continuous sequence if needed, and returns the final Guru response.
@@ -109,7 +111,7 @@ def chat_with_guru(user_message: str, conversation_history: list = None) -> tupl
         
         for step in range(max_steps):
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-nano", #gpt-4o-mini
                 messages=conversation_history,
                 tools=tools,
                 tool_choice="auto"
@@ -151,3 +153,75 @@ def chat_with_guru(user_message: str, conversation_history: list = None) -> tupl
         logger.error(f"Guru encountered an error: {str(e)}")
         error_msg = "I'm having a little trouble connecting to the Kapruka catalog right now. Could you try asking again?"
         return error_msg, conversation_history
+
+
+async def chat_with_guru_stream(user_message: str, conversation_history: Optional[List[Dict[str, Any]]] = None):
+    """
+    Streaming version of the autonomous loop.
+    Yields status updates when tools are requested and a final event when the reply is ready.
+    """
+    if conversation_history is None:
+        conversation_history = [{"role": "system", "content": get_dynamic_system_prompt()}]
+
+    conversation_history.append({"role": "user", "content": user_message})
+    tools = load_kapruka_tools()
+
+    try:
+        max_steps = 5
+
+        for step in range(max_steps):
+            response = await asyncio.to_thread(
+                client.chat.completions.create,
+                model="gpt-5-nano",
+                messages=conversation_history,
+                tools=tools,
+                tool_choice="auto"
+            )
+
+            response_message = response.choices[0].message
+
+            if response_message.tool_calls:
+                conversation_history.append(response_message.model_dump(exclude_none=True))
+
+                for tool_call in response_message.tool_calls:
+                    tool_name = tool_call.function.name
+                    tool_args = json.loads(tool_call.function.arguments)
+
+                    logger.info(f"[Step {step+1}] OpenAI requested tool: {tool_name} with args: {tool_args}")
+                    yield {"type": "status", "tool": tool_name}
+
+                    tool_result = await async_execute_tool(tool_name, tool_args)
+
+                    conversation_history.append({
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": tool_name,
+                        "content": json.dumps(tool_result)
+                    })
+
+                continue
+
+            final_text = response_message.content
+            if final_text:
+                conversation_history.append({"role": "assistant", "content": final_text})
+
+            yield {
+                "type": "final",
+                "reply": final_text,
+                "history": conversation_history
+            }
+            return
+
+        logger.warning("Agent hit maximum step limit without concluding.")
+        error_msg = "I had to crunch a lot of numbers just now and got a little lost. Could we take it one step at a time?"
+        conversation_history.append({"role": "assistant", "content": error_msg})
+        yield {
+            "type": "final",
+            "reply": error_msg,
+            "history": conversation_history
+        }
+
+    except Exception as e:
+        logger.error(f"Guru encountered an error: {str(e)}")
+        error_msg = "I'm having a little trouble connecting to the Kapruka catalog right now. Could you try asking again?"
+        yield {"type": "error", "message": error_msg}

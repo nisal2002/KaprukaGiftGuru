@@ -1,16 +1,17 @@
 import os
 import logging
+import json
 import webbrowser
 from threading import Timer
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
-from services.llm_service import chat_with_guru
+from services.llm_service import chat_with_guru_stream
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +38,7 @@ class ChatRequest(BaseModel):
     history: Optional[List[Dict[str, Any]]] = None
 
 @app.post("/api/chat")
-def chat_endpoint(request: ChatRequest):
+async def chat_endpoint(request: ChatRequest):
     """
     Note: We use 'def' instead of 'async def' here. 
     FastAPI is smart enough to run standard 'def' functions in a background thread pool,
@@ -48,17 +49,84 @@ def chat_endpoint(request: ChatRequest):
     if not user_message:
         raise HTTPException(status_code=400, detail="Message field cannot be empty")
 
-    try:
-        reply, updated_history = chat_with_guru(user_message, request.history)
+    async def event_stream():
+        try:
+            yield ": connected\n\n"
 
-        return {
-            "reply": reply,
-            "history": updated_history
+            async for event in chat_with_guru_stream(user_message, request.history):
+                event_type = event.get("type")
+
+                if event_type == "status":
+                    payload = {"tool": event.get("tool")}
+                    yield f"event: status\ndata: {json.dumps(payload)}\n\n"
+                elif event_type == "final":
+                    payload = {
+                        "reply": event.get("reply"),
+                        "history": event.get("history")
+                    }
+                    yield f"event: final\ndata: {json.dumps(payload)}\n\n"
+                elif event_type == "error":
+                    payload = {"message": event.get("message")}
+                    yield f"event: error\ndata: {json.dumps(payload)}\n\n"
+        except Exception as e:
+            logger.error(f"API route encountered an error: {str(e)}")
+            payload = {"message": "An internal server error occurred"}
+            yield f"event: error\ndata: {json.dumps(payload)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no"
         }
+    )
 
+
+@app.get("/api/chat/stream")
+async def chat_stream_get(message: str, history: Optional[str] = None):
+    """SSE GET endpoint consumed by EventSource. `history` should be a JSON-encoded string when present."""
+    try:
+        parsed_history = None
+        if history:
+            try:
+                parsed_history = json.loads(history)
+            except Exception:
+                parsed_history = None
+
+        async def event_stream():
+            try:
+                yield ": connected\n\n"
+                async for event in chat_with_guru_stream(message, parsed_history):
+                    event_type = event.get("type")
+
+                    if event_type == "status":
+                        payload = {"tool": event.get("tool")}
+                        yield f"event: status\ndata: {json.dumps(payload)}\n\n"
+                    elif event_type == "final":
+                        payload = {
+                            "reply": event.get("reply"),
+                            "history": event.get("history")
+                        }
+                        yield f"event: final\ndata: {json.dumps(payload)}\n\n"
+                    elif event_type == "error":
+                        payload = {"message": event.get("message")}
+                        yield f"event: error\ndata: {json.dumps(payload)}\n\n"
+            except Exception as e:
+                logger.error(f"API stream route error: {str(e)}")
+                payload = {"message": "An internal server error occurred"}
+                yield f"event: error\ndata: {json.dumps(payload)}\n\n"
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "X-Accel-Buffering": "no"
+            }
+        )
     except Exception as e:
-        logger.error(f"API route encountered an error: {str(e)}")
-        raise HTTPException(status_code=500, detail="An internal server error occurred")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Specific route for the root to serve index.html
 @app.get("/")
