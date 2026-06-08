@@ -59,7 +59,7 @@ function appendMessage(sender, content, isRawHtml = false) {
 }
 
 // Render dynamic animated typing dots block
-function appendTypingIndicator(statusText = "Analyzing Query") {
+function appendTypingIndicator(statusText = "Guru Analyzing Query") {
     const row = document.createElement("div");
     row.classList.add("message-row", "guru");
     row.id = "typing-indicator-row";
@@ -150,7 +150,7 @@ async function sendMessageToAgent(messageText) {
     es.addEventListener("status", (e) => {
         try {
             const payload = JSON.parse(e.data);
-            updateTypingIndicator(payload.tool || "Analyzing Query...");
+            updateTypingIndicator(payload.tool || "Guru Analyzing Query");
         } catch (err) {
             console.error("Malformed status event:", err);
         }

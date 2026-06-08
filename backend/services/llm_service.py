@@ -5,7 +5,7 @@ import asyncio
 from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, AsyncGenerator
 
 from services.mcp_client import execute_kapruka_tool, async_execute_tool
 
@@ -15,6 +15,73 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def _create_chat_response(messages: Any, tools: Any, model: str = "gpt-5-nano"):
+    return client.chat.completions.create(
+        model=model,
+        messages=messages,
+        tools=tools,
+        tool_choice="auto",
+    )
+
+
+async def _create_chat_response_async(messages: Any, tools: Any, model: str = "gpt-5-nano"):
+    return await asyncio.to_thread(lambda: client.chat.completions.create(
+        model=model,
+        messages=messages,
+        tools=tools,
+        tool_choice="auto",
+    ))
+
+
+def _build_tool_display_name_map(tools: List[Dict[str, Any]]) -> Dict[str, str]:
+    return {
+        tool["function"]["name"]: tool["function"].get("display_name", tool["function"]["name"])
+        for tool in tools
+        if tool.get("type") == "function" and tool.get("function", {}).get("name")
+    }
+
+
+def _process_tool_calls_sync(conversation_history: List[Dict[str, Any]], response_message, tool_display_names: Dict[str, str]) -> None:
+    conversation_history.append(response_message.model_dump(exclude_none=True))
+
+    for tool_call in response_message.tool_calls:
+        tool_name = tool_call.function.name
+        tool_display_name = tool_display_names.get(tool_name, tool_name)
+        tool_args = json.loads(tool_call.function.arguments)
+
+        logger.info(f"AI requested tool: {tool_display_name} ({tool_name}) with args: {tool_args}")
+
+        tool_result = execute_kapruka_tool(tool_name, tool_args)
+
+        conversation_history.append({
+            "tool_call_id": tool_call.id,
+            "role": "tool",
+            "name": tool_name,
+            "content": json.dumps(tool_result),
+        })
+
+
+async def _process_tool_calls_async(conversation_history: List[Dict[str, Any]], response_message, tool_display_names: Dict[str, str]) -> AsyncGenerator[Dict[str, Any], None]:
+    conversation_history.append(response_message.model_dump(exclude_none=True))
+
+    for tool_call in response_message.tool_calls:
+        tool_name = tool_call.function.name
+        tool_display_name = tool_display_names.get(tool_name, tool_name)
+        tool_args = json.loads(tool_call.function.arguments)
+
+        logger.info(f"AI requested tool: {tool_display_name} ({tool_name}) with args: {tool_args}")
+        yield {"type": "status", "tool": tool_display_name}
+
+        tool_result = await async_execute_tool(tool_name, tool_args)
+
+        conversation_history.append({
+            "tool_call_id": tool_call.id,
+            "role": "tool",
+            "name": tool_name,
+            "content": json.dumps(tool_result),
+        })
 
 def load_kapruka_tools():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -105,50 +172,30 @@ def chat_with_guru(user_message: str, conversation_history: Optional[List[Dict[s
     conversation_history.append({"role": "user", "content": user_message})
     
     tools = load_kapruka_tools()
+    tool_display_names = _build_tool_display_name_map(tools)
     
     try:
         max_steps = 5
-        
+
         for step in range(max_steps):
-            response = client.chat.completions.create(
-                model="gpt-5-nano", #gpt-4o-mini
-                messages=conversation_history,
-                tools=tools,
-                tool_choice="auto"
-            )
-            
+            response = _create_chat_response(conversation_history, tools)
+
             response_message = response.choices[0].message
-            
+
             if response_message.tool_calls:
-                conversation_history.append(response_message.model_dump(exclude_none=True))
-                
-                for tool_call in response_message.tool_calls:
-                    tool_name = tool_call.function.name
-                    tool_args = json.loads(tool_call.function.arguments)
-                    
-                    logger.info(f"[Step {step+1}] OpenAI requested tool: {tool_name} with args: {tool_args}")
-                    
-                    tool_result = execute_kapruka_tool(tool_name, tool_args)
-                    
-                    conversation_history.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": tool_name,
-                        "content": json.dumps(tool_result)
-                    })
+                _process_tool_calls_sync(conversation_history, response_message, tool_display_names)
                 continue
-                
-            else:
-                final_text = response_message.content
-                if final_text:
-                    conversation_history.append({"role": "assistant", "content": final_text})
-                return final_text, conversation_history
-                
+
+            final_text = response_message.content or ""
+            if final_text:
+                conversation_history.append({"role": "assistant", "content": final_text})
+            return final_text, conversation_history
+
         logger.warning("Agent hit maximum step limit without concluding.")
         error_msg = "I had to crunch a lot of numbers just now and got a little lost. Could we take it one step at a time?"
         conversation_history.append({"role": "assistant", "content": error_msg})
         return error_msg, conversation_history
-            
+
     except Exception as e:
         logger.error(f"Guru encountered an error: {str(e)}")
         error_msg = "I'm having a little trouble connecting to the Kapruka catalog right now. Could you try asking again?"
@@ -165,43 +212,23 @@ async def chat_with_guru_stream(user_message: str, conversation_history: Optiona
 
     conversation_history.append({"role": "user", "content": user_message})
     tools = load_kapruka_tools()
+    tool_display_names = _build_tool_display_name_map(tools)
 
     try:
         max_steps = 5
 
         for step in range(max_steps):
-            response = await asyncio.to_thread(
-                client.chat.completions.create,
-                model="gpt-5-nano",
-                messages=conversation_history,
-                tools=tools,
-                tool_choice="auto"
-            )
+            response = await _create_chat_response_async(conversation_history, tools)
 
             response_message = response.choices[0].message
 
             if response_message.tool_calls:
-                conversation_history.append(response_message.model_dump(exclude_none=True))
-
-                for tool_call in response_message.tool_calls:
-                    tool_name = tool_call.function.name
-                    tool_args = json.loads(tool_call.function.arguments)
-
-                    logger.info(f"[Step {step+1}] OpenAI requested tool: {tool_name} with args: {tool_args}")
-                    yield {"type": "status", "tool": tool_name}
-
-                    tool_result = await async_execute_tool(tool_name, tool_args)
-
-                    conversation_history.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": tool_name,
-                        "content": json.dumps(tool_result)
-                    })
+                async for status in _process_tool_calls_async(conversation_history, response_message, tool_display_names):
+                    yield status
 
                 continue
 
-            final_text = response_message.content
+            final_text = response_message.content or ""
             if final_text:
                 conversation_history.append({"role": "assistant", "content": final_text})
 

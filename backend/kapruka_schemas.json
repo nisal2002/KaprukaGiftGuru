@@ -3,6 +3,7 @@
     "type": "function",
     "function": {
       "name": "kapruka_search_products",
+      "display_name": "Searching Kapruka Products",
       "description": "Search for products across the Kapruka catalog using keywords. Returns a ranked list of matching products with prices, stock status, images, and URLs.",
       "parameters": {
         "type": "object",
@@ -62,6 +63,7 @@
     "type": "function",
     "function": {
       "name": "kapruka_get_product",
+      "display_name": "Getting Your Product Details",
       "description": "Fetch full details for a single Kapruka product by its product ID. Returns name, description, price, stock status, images, and shipping info.",
       "parameters": {
         "type": "object",
@@ -90,6 +92,7 @@
     "type": "function",
     "function": {
       "name": "kapruka_list_categories",
+      "display_name": "Getting Product Category List",
       "description": "List top-level Kapruka product categories by name with browse URLs.",
       "parameters": {
         "type": "object",
@@ -113,6 +116,7 @@
     "type": "function",
     "function": {
       "name": "kapruka_list_delivery_cities",
+      "display_name": "Getting Delivery Routes",
       "description": "Search Sri Lankan cities Kapruka delivers to. Use the `query` param to filter (e.g. 'colombo').",
       "parameters": {
         "type": "object",
@@ -140,6 +144,7 @@
     "type": "function",
     "function": {
       "name": "kapruka_check_delivery",
+      "display_name": "Checking Delivery Availability and Rates",
       "description": "Check whether Kapruka can deliver to a given city on a given date, and at what rate.",
       "parameters": {
         "type": "object",
@@ -171,6 +176,7 @@
     "type": "function",
     "function": {
       "name": "kapruka_create_order",
+      "display_name": "Creating Your Order",
       "description": "Create a guest-checkout order on Kapruka and return a secure 60-minute click-to-pay link.",
       "parameters": {
         "type": "object",
@@ -242,6 +248,7 @@
     "type": "function",
     "function": {
       "name": "kapruka_track_order",
+      "display_name": "Track Your Order Status",
       "description": "Look up status and delivery progress for a Kapruka order by order number (e.g. 'VIMP34456CB2').",
       "parameters": {
         "type": "object",
