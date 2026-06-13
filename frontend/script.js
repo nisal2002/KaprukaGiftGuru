@@ -31,10 +31,13 @@ function parseMarkdown(text) {
                 <div>
                     <div class="product-name">${name.trim()}</div>
                     <div class="product-summary">${summary.trim()}</div>
-                </div>
-                <div class="product-meta">
-                    <span class="product-price">${price.trim()}</span>
-                    <span class="product-stock ${stockClass}">${stock.trim()}</span>
+                    <div class="product-shipping">
+                        🌏 Ships Internationally: <strong>${ships.trim()}</strong>
+                    </div>
+                    <div class="product-meta">
+                        <span class="product-price">${price.trim()}</span>
+                        <span class="product-stock ${stockClass}">${stock.trim()}</span>
+                    </div>                    
                 </div>
                 <a href="${url.trim()}" target="_blank" class="product-action-btn">
                     ${linkText} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.8rem; margin-left:4px;"></i>

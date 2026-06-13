@@ -91,15 +91,15 @@ body, html {
 .status-badge {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    color: rgba(255,255,255,0.7);
 }
 
 .status-dot {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     background-color: var(--success-green);
-    border-radius: 50%;
+    border-radius: 100%;
     display: inline-block;
 }
 
@@ -114,8 +114,8 @@ body, html {
 
 .chat-header {
     background-color: var(--white);
-    padding: 16px 32px;
-    border-bottom: 1px solid var(--border-color);
+    padding: 17.5px 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -130,20 +130,6 @@ body, html {
 .header-info p {
     font-size: 0.8rem;
     color: var(--text-muted);
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
-    color: var(--primary-purple);
-    font-weight: 600;
-}
-
-.secure-icon {
-    color: var(--success-green);
-    font-size: 1.1rem;
 }
 
 /* Scrollable Messages Pane */
@@ -168,10 +154,6 @@ body, html {
     border: 1px solid var(--border-color);
 }
 
-.welcome-icon {
-    font-size: 3rem;
-    margin-bottom: 16px;
-}
 
 .welcome-card h3 {
     color: var(--dark-purple);
@@ -237,6 +219,7 @@ body, html {
     background-color: var(--user-bubble);
     color: var(--white);
     border-bottom-right-radius: 2px;
+    /* max-width: 40% !important; */
 }
 
 .message-row.guru .bubble {
@@ -244,6 +227,7 @@ body, html {
     color: var(--text-dark);
     border-bottom-left-radius: 2px;
     border: 1px solid var(--border-color);
+    max-width: 60% !important;
 }
 
 /* Embedded Product Card Elements styled out cleanly */
@@ -278,8 +262,8 @@ body, html {
 /* Input Tray Design */
 .input-area {
     background-color: var(--white);
-    padding: 24px 32px;
-    border-top: 1px solid var(--border-color);
+    padding: 20px 32px;
+    border-top: 1px solid rgba(255,255,255,0.1);
 }
 
 .input-form {
@@ -287,7 +271,7 @@ body, html {
     background: var(--bg-light);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 6px 12px;
+    padding: 5px 12px;
     align-items: center;
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
 }
@@ -393,7 +377,7 @@ body, html {
 }
 
 .right-sidebar .sidebar-header {
-    padding: 24px;
+    padding: 25px;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     margin-bottom: 0;
 }
@@ -420,14 +404,14 @@ body, html {
     text-align: center;
     color: rgba(255, 255, 255, 0.5);
     font-size: 0.95rem;
-    margin-top: 40px;
+    margin-top: 50%;
     line-height: 1.5;
 }
 
 .cart-footer {
-    padding: 24px;
+    padding: 15.5px;
     border-top: 1px solid rgba(255,255,255,0.1);
-    background: rgba(0, 0, 0, 0.15); /* Slightly darker for the footer */
+    background: rgba(0, 0, 0, 0.15);
 }
 
 .cart-total {
@@ -502,7 +486,7 @@ body, html {
     align-items: center;
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px dashed var(--border-color);
+    border-top: 1px solid rgba(255,255,255,0.1);
 }
 
 .product-price {
@@ -522,6 +506,20 @@ body, html {
 .stock-high { background: #e8f8f5; color: #1abc9c; }
 .stock-medium { background: #fef9e7; color: #f39c12; }
 .stock-low { background: #fadbd8; color: #e74c3c; }
+
+.product-shipping {
+    font-size: 0.8rem !important;
+    color: var(--text-muted) !important;
+    margin-top: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.product-shipping strong {
+    color: var(--dark-purple) !important;
+    font-weight: 600 !important;
+}
 
 .product-action-btn {
     background: var(--light-purple);
