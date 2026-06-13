@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
     <div class="app-container">
         <aside class="sidebar">
@@ -40,7 +42,8 @@
                 <div class="welcome-card" id="welcome-card">
                     <div class="welcome-icon">🔮</div>
                     <h3>Welcome to the Future of Gifting!</h3>
-                    <p>I am your warm, witty, and intelligent shopping companion. Tell me who you are shopping for, your budget, or your delivery target in Sri Lanka, and let's discover the perfect match.</p>
+                    <p>I am your warm, witty, and intelligent shopping companion. Tell me who you are shopping for, your
+                        budget, or your delivery target in Sri Lanka, and let's discover the perfect match.</p>
                     <div class="suggested-prompts">
                         <button class="prompt-chip">🎂 Show me cakes under 7000 LKR</button>
                         <button class="prompt-chip">🚚 Do you deliver to Colombo 03 tomorrow?</button>
@@ -51,7 +54,8 @@
 
             <footer class="input-area">
                 <form class="input-form" id="chat-form">
-                    <input type="text" id="user-input" placeholder="Type your gifting request or ask any..." autocomplete="off" required>
+                    <input type="text" id="user-input" placeholder="Type your gifting request or ask any..."
+                        autocomplete="off" required>
                     <button type="submit" class="send-btn" id="send-button">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
@@ -61,7 +65,33 @@
                 </div>
             </footer>
         </main>
+
+        <aside class="right-sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fa-solid fa-cart-shopping"></i> Your Cart</h2>
+            </div>
+
+            <div class="cart-items-container" id="cart-container">
+                <div class="empty-cart-message" id="empty-cart-msg">
+                    <i class="fa-solid fa-basket-shopping"
+                        style="font-size: 2rem; margin-bottom: 12px; opacity: 0.5;"></i><br>
+                    Your cart is feeling a little light!
+                </div>
+            </div>
+
+            <div class="cart-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span id="cart-total-amount">LKR 0.00</span>
+                </div>
+                <button class="checkout-btn" id="sidebar-checkout-btn" disabled>
+                    Proceed to Checkout
+                </button>
+            </div>
+        </aside>
+
     </div>
     <script src="script.js"></script>
 </body>
+
 </html>

@@ -12,7 +12,40 @@ const newChatBtn = document.getElementById("new-chat-btn");
 // Custom Robust Markdown-to-HTML Parser with inline graphics adapter
 function parseMarkdown(text) {
     let html = text;
+
+    // --- NEW: Intercept Product Search Results and build Rich Cards ---
+    // This regex looks for the strict pattern defined in our backend prompt
+    const productListRegex = /- \*\*Name\*\*: (.*?)\s*- \*\*Summary\*\*: (.*?)\s*- \*\*Price\*\*: (.*?)\s*- \*\*Stock Level\*\*: (.*?)\s*- \*\*Ships Internationally\*\*: (.*?)\s*- \*\*URL\*\*: \[(.*?)\]\((.*?)\)/g;
     
+    // Check if there are products to wrap in a grid container
+    if (productListRegex.test(html)) {
+        html = html.replace(productListRegex, (match, name, summary, price, stock, ships, linkText, url) => {
+            // Determine stock pill color
+            let stockClass = 'stock-low';
+            const stockCheck = stock.toLowerCase();
+            if (stockCheck.includes('high')) stockClass = 'stock-high';
+            else if (stockCheck.includes('medium')) stockClass = 'stock-medium';
+
+            return `
+            <div class="product-card">
+                <div>
+                    <div class="product-name">${name.trim()}</div>
+                    <div class="product-summary">${summary.trim()}</div>
+                </div>
+                <div class="product-meta">
+                    <span class="product-price">${price.trim()}</span>
+                    <span class="product-stock ${stockClass}">${stock.trim()}</span>
+                </div>
+                <a href="${url.trim()}" target="_blank" class="product-action-btn">
+                    ${linkText} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.8rem; margin-left:4px;"></i>
+                </a>
+            </div>`;
+        });
+        
+        // Wrap contiguous product cards in a CSS grid for a beautiful layout
+        html = html.replace(/(<div class="product-card">[\s\S]*?<\/div>\s*)+/g, '<div class="products-grid">$&</div>');
+    }
+
     // 1. Image Conversion Pattern: ![alt](url)
     html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; border-radius: 12px; margin: 12px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: block;" />');
     
@@ -22,8 +55,8 @@ function parseMarkdown(text) {
     // 3. Inline Code Fragments
     html = html.replace(/`(.*?)`/g, '<code>$1</code>');
     
-    // 4. Anchor Hyperlinks Conversion Pattern: [text](url)
-    html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem;"></i></a>');
+    // 4. Anchor Hyperlinks Conversion Pattern (ignore links already inside product cards)
+    html = html.replace(/(?<!href=")(?<!">)\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem;"></i></a>');
     
     // 5. Convert Double Linebreaks to Segment Paragraphs safely
     html = html.replace(/\n\n/g, '<br/><br/>');
