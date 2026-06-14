@@ -545,3 +545,115 @@ body, html {
     gap: 16px;
     margin-top: 12px;
 }
+
+.track-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.track-info-col {
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Track Order Card Design --- */
+.track-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 16px 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    max-width: 500px;
+    width: 100%;
+}
+
+.track-header {
+    background: var(--bg-light);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.track-title {
+    font-weight: 700;
+    color: var(--dark-purple);
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.track-status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Dynamic Status Colors */
+.status-delivered { background: #e8f8f5; color: #1abc9c; }
+.status-transit { background: #e8f4f8; color: #3498db; }
+.status-pending { background: #fef9e7; color: #f39c12; }
+.status-cancelled { background: #fadbd8; color: #e74c3c; }
+
+.track-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.track-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.track-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.track-sub-value {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.track-items-container {
+    padding: 16px 20px;
+    background: #fafbfc;
+}
+
+.track-item-line {
+    font-size: 0.9rem;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    background: var(--white);
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.mt-2 { margin-top: 16px; }

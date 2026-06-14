@@ -9,60 +9,217 @@ const userInput = document.getElementById("user-input");
 const welcomeCard = document.getElementById("welcome-card");
 const newChatBtn = document.getElementById("new-chat-btn");
 
-// Custom Robust Markdown-to-HTML Parser with inline graphics adapter
-function parseMarkdown(text) {
-    let html = text;
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
-    // --- NEW: Intercept Product Search Results and build Rich Cards ---
-    // This regex looks for the strict pattern defined in our backend prompt
-    const productListRegex = /- \*\*Name\*\*: (.*?)\s*- \*\*Summary\*\*: (.*?)\s*- \*\*Price\*\*: (.*?)\s*- \*\*Stock Level\*\*: (.*?)\s*- \*\*Ships Internationally\*\*: (.*?)\s*- \*\*URL\*\*: \[(.*?)\]\((.*?)\)/g;
-    
-    // Check if there are products to wrap in a grid container
-    if (productListRegex.test(html)) {
-        html = html.replace(productListRegex, (match, name, summary, price, stock, ships, linkText, url) => {
-            // Determine stock pill color
-            let stockClass = 'stock-low';
-            const stockCheck = stock.toLowerCase();
-            if (stockCheck.includes('high')) stockClass = 'stock-high';
-            else if (stockCheck.includes('medium')) stockClass = 'stock-medium';
+function buildProductCard(product) {
+    let stockClass = 'stock-low';
+    const stockCheck = (product.stock || '').toLowerCase();
+    if (stockCheck.includes('high')) stockClass = 'stock-high';
+    else if (stockCheck.includes('medium')) stockClass = 'stock-medium';
 
-            return `
-            <div class="product-card">
-                <div>
-                    <div class="product-name">${name.trim()}</div>
-                    <div class="product-summary">${summary.trim()}</div>
-                    <div class="product-shipping">
-                        🌏 Ships Internationally: <strong>${ships.trim()}</strong>
-                    </div>
-                    <div class="product-meta">
-                        <span class="product-price">${price.trim()}</span>
-                        <span class="product-stock ${stockClass}">${stock.trim()}</span>
-                    </div>                    
-                </div>
-                <a href="${url.trim()}" target="_blank" class="product-action-btn">
-                    ${linkText} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.8rem; margin-left:4px;"></i>
-                </a>
-            </div>`;
-        });
-        
-        // Wrap contiguous product cards in a CSS grid for a beautiful layout
-        html = html.replace(/(<div class="product-card">[\s\S]*?<\/div>\s*)+/g, '<div class="products-grid">$&</div>');
+    return `
+    <div class="product-card">
+        <div>
+            <div class="product-name">${escapeHtml(product.name || '')}</div>
+            <div class="product-summary">${escapeHtml(product.summary || '')}</div>
+            <div class="product-shipping">
+                🌏 Ships Internationally: <strong>${escapeHtml(product.ships || '')}</strong>
+            </div>
+            <div class="product-meta">
+                <span class="product-price">${escapeHtml(product.price || '')}</span>
+                <span class="product-stock ${stockClass}">${escapeHtml(product.stock || '')}</span>
+            </div>
+        </div>
+        <a href="${escapeHtml(product.url || '#')}" target="_blank" class="product-action-btn" rel="noopener noreferrer">
+            ${escapeHtml(product.linkText || 'View Product')} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.8rem; margin-left:4px;"></i>
+        </a>
+    </div>`;
+}
+
+function buildTrackItemLine(line) {
+    return `
+        <div class="track-item-line">
+            <i class="fa-solid fa-cube" style="color: var(--primary-purple); opacity:0.7;"></i>
+            <span>${escapeHtml(line)}</span>
+        </div>`;
+}
+
+function buildTrackCard(track) {
+    let statusClass = 'status-pending';
+    const statusCheck = (track.status || '').toLowerCase();
+    if (statusCheck.includes('deliver') || statusCheck.includes('complet')) statusClass = 'status-delivered';
+    else if (statusCheck.includes('transit') || statusCheck.includes('dispatch') || statusCheck.includes('ship')) statusClass = 'status-transit';
+    else if (statusCheck.includes('cancel')) statusClass = 'status-cancelled';
+
+    const itemsHtml = (track.items || [])
+        .map((item) => buildTrackItemLine(item))
+        .join('');
+
+    return `
+    <div class="track-card">
+        <div class="track-header">
+            <div class="track-title"><i class="fa-solid fa-box-open"></i> Order #${escapeHtml(track.orderNumber || '')}</div>
+            <div class="track-status ${statusClass}">${escapeHtml(track.status || '')}</div>
+        </div>
+        <div class="track-body">
+            <div class="track-info-col">
+                <div class="track-label">Delivery Date</div>
+                <div class="track-value">${escapeHtml(track.deliveryDate || '')}</div>
+                <div class="track-label mt-2">Payment Details</div>
+                <div class="track-value">${escapeHtml(track.amount || '')}</div>
+                <div class="track-sub-value">${escapeHtml(track.paymentMethod || '')}</div>
+            </div>
+            <div class="track-info-col">
+                <div class="track-label">Recipient</div>
+                <div class="track-value">${escapeHtml(track.recipientName || '')}</div>
+                <div class="track-sub-value"><i class="fa-solid fa-phone"></i> ${escapeHtml(track.recipientPhone || '')}</div>
+                <div class="track-sub-value"><i class="fa-solid fa-location-dot"></i> ${escapeHtml(track.recipientAddress || '')}</div>
+            </div>
+        </div>
+        <div class="track-items-container">
+            <div class="track-label">Items in Order</div>
+            ${itemsHtml}
+        </div>
+    </div>`;
+}
+
+function parseTrackBlock(block) {
+    const fieldPatterns = {
+        orderNumber: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Order Number\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        status: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Status\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        deliveryDate: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Delivery Date\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        paymentMethod: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Payment Method\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        amount: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Amount\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        recipientDetails: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Recipient Details\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        itemsDetails: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Items Details\*\*:\s*([\s\S]*?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is
+    };
+
+    const matches = {};
+    for (const [key, pattern] of Object.entries(fieldPatterns)) {
+        const found = block.match(pattern);
+        if (!found) {
+            return null;
+        }
+        matches[key] = found[1].trim();
     }
 
-    // 1. Image Conversion Pattern: ![alt](url)
-    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; border-radius: 12px; margin: 12px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: block;" />');
-    
-    // 2. Strong Headers Conversion Pattern
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // 3. Inline Code Fragments
-    html = html.replace(/`(.*?)`/g, '<code>$1</code>');
-    
-    // 4. Anchor Hyperlinks Conversion Pattern (ignore links already inside product cards)
-    html = html.replace(/(?<!href=")(?<!">)\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem;"></i></a>');
-    
-    // 5. Convert Double Linebreaks to Segment Paragraphs safely
-    html = html.replace(/\n\n/g, '<br/><br/>');
+    const recipientName = matches.recipientDetails.match(/Name:\s*(.+?)(?=\n|\r|$)/i)?.[1]?.trim() || '';
+    const recipientPhone = matches.recipientDetails.match(/Phone:\s*(.+?)(?=\n|\r|$)/i)?.[1]?.trim() || '';
+    const recipientAddress = matches.recipientDetails.match(/Address:\s*(.+?)(?=\n|\r|$)/is)?.[1]?.trim() || '';
+
+    const items = matches.itemsDetails
+        .split(/\r?\n/)
+        .map((line) => line.replace(/^\s*[-*]\s*/, '').trim())
+        .filter(Boolean)
+        .map((line) => line.replace(/`/g, ''));
+
+    return {
+        orderNumber: matches.orderNumber,
+        status: matches.status,
+        deliveryDate: matches.deliveryDate,
+        paymentMethod: matches.paymentMethod,
+        amount: matches.amount,
+        recipientName,
+        recipientPhone,
+        recipientAddress,
+        items
+    };
+}
+
+function parseProductBlock(block) {
+    const fieldPatterns = {
+        name: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Name\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        summary: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Summary\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        price: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Price\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        stock: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Stock Level\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        ships: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*Ships Internationally\*\*:\s*(.+?)(?=\n\s*(?:-\s*|\d+\.\s*)?\*\*|$)/is,
+        url: /(?:^|\n)\s*(?:-\s*|\d+\.\s*)?\*\*URL\*\*:\s*\[(.*?)\]\((.*?)\)/is
+    };
+
+    const matches = {};
+    for (const [key, pattern] of Object.entries(fieldPatterns)) {
+        const found = block.match(pattern);
+        if (!found) {
+            return null;
+        }
+        matches[key] = found;
+    }
+
+    return {
+        name: matches.name[1].trim(),
+        summary: matches.summary[1].trim(),
+        price: matches.price[1].trim(),
+        stock: matches.stock[1].trim(),
+        ships: matches.ships[1].trim(),
+        linkText: matches.url[1].trim(),
+        url: matches.url[2].trim()
+    };
+}
+
+// Custom Robust Markdown-to-HTML Parser with inline graphics adapter
+function parseMarkdown(text) {
+    const sections = String(text).split(/\n{2,}/);
+    const renderedSections = [];
+    let productCardBuffer = [];
+    let trackCardBuffer = [];
+
+    function flushProductCards() {
+        if (!productCardBuffer.length) {
+            return;
+        }
+
+        renderedSections.push(`<div class="products-grid">${productCardBuffer.join('')}</div>`);
+        productCardBuffer = [];
+    }
+
+    function flushTrackCards() {
+        if (!trackCardBuffer.length) {
+            return;
+        }
+
+        renderedSections.push(`<div class="track-grid">${trackCardBuffer.join('')}</div>`);
+        trackCardBuffer = [];
+    }
+
+    sections.forEach((section) => {
+        const product = parseProductBlock(section);
+        if (product) {
+            flushTrackCards();
+            productCardBuffer.push(buildProductCard(product));
+            return;
+        }
+
+        const track = parseTrackBlock(section);
+        if (track) {
+            flushProductCards();
+            trackCardBuffer.push(buildTrackCard(track));
+            return;
+        }
+
+        flushProductCards();
+        flushTrackCards();
+
+        let htmlSection = section;
+
+        htmlSection = htmlSection.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; border-radius: 12px; margin: 12px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: block;" />');
+        htmlSection = htmlSection.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        htmlSection = htmlSection.replace(/`(.*?)`/g, '<code>$1</code>');
+        htmlSection = htmlSection.replace(/(?<!href=")(?<!">)\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem;"></i></a>');
+
+        renderedSections.push(htmlSection);
+    });
+
+    flushProductCards();
+    flushTrackCards();
+
+    let html = renderedSections.join('<br/><br/>');
 
     return html;
 }
